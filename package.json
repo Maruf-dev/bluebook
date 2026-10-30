@@ -16,7 +16,7 @@
   },
   "homepage": "https://github.com/Maruf-dev/bluebook#readme",
   "scripts": {
-    "dev": "concurrently \"npm:dev:renderer\" \"npm:dev:electron\"",
+    "dev": "start cmd /c \"npm run dev:renderer\" & start cmd /c \"npm run dev:electron\"",
     "dev:renderer": "vite",
     "dev:electron": "wait-on http://localhost:5173 && electron dist/electron/main.js",
     "typecheck": "tsc --noEmit",
@@ -32,6 +32,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@esbuild/win32-x64": "^0.20.2",
     "@tanstack/react-query": "^5.0.0",
     "better-sqlite3": "^11.0.0",
     "clsx": "^2.1.0",
@@ -43,6 +44,7 @@
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.0.0",
     "tailwind-merge": "^2.2.0",
+    "yargs": "^17.1.1",
     "zustand": "^5.0.0"
   },
   "devDependencies": {
@@ -73,7 +75,7 @@
     "appId": "com.examdesk.desktop",
     "productName": "ExamDesk",
     "compression": "maximum",
-    "copyright": "Copyright \u00a9 2026 ExamDesk",
+    "copyright": "Copyright © 2026 ExamDesk",
     "directories": {
       "output": "release",
       "app": "dist"

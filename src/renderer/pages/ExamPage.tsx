@@ -199,7 +199,7 @@ export function ExamPage() {
                           ? 'bg-amber-50/50 dark:bg-amber-900/10 border-l-2 border-amber-500'
                           : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}
                 }
-                aria-label={`Question ${mq.number}, ${status}`}
+                aria-label="Question " + mq.number + ", " + status
               >
                 <div className="flex items-center gap-3">
                   <span className={`w-6 text-center font-mono ${isCurrent ? 'font-bold' : 'font-normal'}`}>
