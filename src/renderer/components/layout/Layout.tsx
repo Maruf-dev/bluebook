@@ -9,7 +9,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Navbar />
         <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-6">
-          <Outlet />
+          <Outlet>{children}</Outlet>
         </main>
       </div>
     </div>
