@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
-import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { AppWindow, Menu, X, Home, Settings as SettingsIcon, HelpCircle } from 'lucide-react';
 import { ROUTES } from '../../shared/constants';
 import { useAppStore } from '../store/useAppStore';
-import { Layout } from '../components/layout/Layout';
+import Layout from '../components/layout/Layout';
 import { HomePage } from '../pages/HomePage';
 import { PracticePage } from '../pages/PracticePage';
 import { TestSetupPage } from '../pages/TestSetupPage';

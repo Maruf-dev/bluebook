@@ -1,15 +1,11 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
   Home,
   BookOpen,
-  Clock,
-  FileText,
   BarChart3,
   Settings as SettingsIcon,
-  ChevronRight,
 } from 'lucide-react';
 import { ROUTES } from '../../../shared/constants';
-import { useLocation as useRLocation } from 'react-router-dom';
 
 const navItems = [
   { href: ROUTES.HOME, label: 'Home', icon: Home },
@@ -19,7 +15,7 @@ const navItems = [
 ];
 
 export function Sidebar() {
-  const location = useRLocation();
+  const { pathname } = window.location;
 
   return (
     <aside className="hidden lg:flex lg:w-64 flex-col border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
@@ -33,7 +29,7 @@ export function Sidebar() {
         <nav className="space-y-1">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = location.pathname === item.href;
+            const isActive = window.location.pathname === item.href;
             return (
               <Link
                 key={item.href}

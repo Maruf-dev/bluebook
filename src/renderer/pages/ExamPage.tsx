@@ -1,17 +1,15 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   X,
   ChevronLeft,
   ChevronRight,
-  RefreshCw,
   HelpCircle,
   Calculator as CalcIcon,
   BookOpen,
   Flag,
   Clock,
   Eye,
-  EyeOff,
   MoreHorizontal,
   LayoutList,
 } from 'lucide-react';
@@ -21,14 +19,9 @@ import { ROUTES } from '../../shared/constants';
 import { useExamStore } from '../store/useExamStore';
 import { useTimerStore } from '../store/useTimerStore';
 import { useAppStore } from '../store/useAppStore';
+import { KaTeX as KaTeXComponent } from 'react-katex';
 
 type Question = any;
-
-interface AnswerChoice {
-  id: string;
-  label: string;
-  content: string;
-}
 
 function renderStem(stem: string) {
   return (
@@ -40,7 +33,8 @@ function renderStem(stem: string) {
 
 export function ExamPage() {
   const navigate = useNavigate();
-  const { theme, keyboardShortcuts } = useAppStore();
+  const location = useLocation();
+  const { theme } = useAppStore();
   const {
     content,
     sections,
@@ -70,9 +64,10 @@ export function ExamPage() {
     durationMinutes,
   } = useTimerStore();
 
-  const [openMenu, setOpenMenu] = useState(false);
-  const [showTimer, setShowTimer] = useState(true);
-  const [submitConfirm, setSubmitConfirm] = useState(false);
+  // Apply theme class to document
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
 
   // Derive current question
   const currentQuestion = (() => {
@@ -94,10 +89,6 @@ export function ExamPage() {
     );
   })();
 
-  const currentSection = sections.find((s) => s.id === currentSectionId);
-  const currentModuleConfig = currentSection ? sections.find((s) => s.id === currentSectionId && s.module === currentModule) : null;
-
-  // Navigation
   const currentIndex = moduleQuestions.findIndex((q) => q.id === currentQuestion?.id);
   const hasPrev = currentIndex > 0;
   const hasNext = currentIndex < moduleQuestions.length - 1;
@@ -105,8 +96,6 @@ export function ExamPage() {
   const goToQuestion = useCallback(
     (q: Question) => {
       setCurrentQuestion(q.sectionId, q.module, q.number);
-      setOpenMenu(false);
-      // restart tracking time for this question is handled elsewhere
     },
     [setCurrentQuestion]
   );
@@ -123,36 +112,34 @@ export function ExamPage() {
     setCurrentQuestion(next.sectionId, next.module, next.number);
   }, [hasNext, moduleQuestions, currentIndex, setCurrentQuestion]);
 
-  // Timer - deadline based, sync on mount
+  // Timer effect - deadline based
   useEffect(() => {
-    if (currentModuleConfig && !isExpired) {
+    if (currentModule && !isExpired) {
       const now = Date.now();
-      const deadline = now + currentModuleConfig.durationMinutes * 60 * 1000;
-      // Only start if not already running with a different deadline
-      startTimer(currentModuleConfig.durationMinutes, deadline);
+      const deadline = now + durationMinutes * 60 * 1000;
+      startTimer(durationMinutes, deadline);
     }
     return () => stopTimer();
-  }, [currentModuleConfig?.id, currentModuleConfig?.durationMinutes, startTimer, stopTimer, isExpired]);
+  }, [currentModule, durationMinutes, isExpired, startTimer, stopTimer]);
 
-  // Sync deadline-based remaining time each second
+  // Sync deadline-based remaining time
   useEffect(() => {
-    if (!currentModuleConfig) return;
+    if (!currentModule) return;
     const interval = setInterval(() => {
       const now = Date.now();
       const attempt = moduleAttempts[`${currentSectionId}-m${currentModule}`];
-      const deadline = attempt?.deadlineAt || now + currentModuleConfig.durationMinutes * 60 * 1000;
+      const deadline = attempt?.deadlineAt || now + durationMinutes * 60 * 1000;
       const remaining = Math.max(0, Math.floor((deadline - now) / 1000));
       updateRemaining(remaining);
       if (remaining <= 0 && !isExpired) {
-        // auto lock - handled by submitting module
+        // auto-submit logic
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, [currentModuleConfig, currentSectionId, currentModule, updateRemaining, isExpired, moduleAttempts]);
+  }, [currentModule, currentSectionId, durationMinutes, updateRemaining, isExpired, moduleAttempts]);
 
   // Keyboard shortcuts
   useEffect(() => {
-    if (!keyboardShortcuts) return;
     const handleKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       const typing = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
@@ -160,12 +147,10 @@ export function ExamPage() {
       if (e.key === 'ArrowLeft') { e.preventDefault(); goPrev(); }
       if (e.key === 'ArrowRight') { e.preventDefault(); goNext(); }
       if (e.key === 'r') { e.preventDefault(); toggleReview(currentQuestion?.id ?? ''); }
-      if (e.key === 'c') { e.preventDefault(); /* calculator handled by menu */ }
-      if (e.key === 't') { e.preventDefault(); toggleVisibility(); }
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [keyboardShortcuts, goPrev, goNext, toggleReview, toggleVisibility, currentQuestion?.id]);
+  }, [goPrev, goNext, toggleReview, currentQuestion?.id]);
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -173,6 +158,7 @@ export function ExamPage() {
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
+  // Question status color
   const statusColor = (q: Question) => {
     const r = responses[q.id];
     if (!r) return 'text-slate-400';
@@ -253,83 +239,71 @@ export function ExamPage() {
 
   const q = currentQuestion as Question;
   const isMC = q.type === 'multiple_choice' || q.type === 'reading_passage';
-  const options: AnswerChoice[] = isMC ? q.options : [];
+  const options: any[] = isMC ? (q.options || []) : [];
   const selectedId = currentResponse?.selectedOptionId ?? null;
   const eliminated = currentResponse?.eliminatedOptionIds ?? [];
 
   return (
     <div className="flex h-full overflow-hidden">
-      {/* Sidebar question menu */}
       <aside className="hidden lg:w-72 lg:flex lg:flex-col border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 z-20">
         <div className="p-4 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-semibold">Questions</h3>
-            <button
-              onClick={() => setOpenMenu(!openMenu)}
-              className="btn-ghost p-1"
-              aria-label="Toggle question menu"
-            >
-              {openMenu ? <ChevronRight className="w-4 h-4" /> : <LayoutList className="w-4 h-4" />}
-            </button>
           </div>
         </div>
-        {openMenu && (
-          <div className="flex-1 overflow-y-auto p-2 space-y-1">
-            {moduleQuestions.map((mq) => {
-              const r = responses[mq.id];
-              const isCurrent = mq.id === q.id;
-              const status = r
-                ? r.markedForReview && r.isAnswered
-                  ? 'answered-review'
-                  : r.markedForReview
-                    ? 'review'
-                    : r.isAnswered
-                      ? 'answered'
-                      : 'unanswered'
+        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+          {moduleQuestions.map((mq) => {
+            const r = responses[mq.id];
+            const isCurrent = mq.id === q.id;
+            const status = r
+              ? r.markedForReview && r.isAnswered
+                ? 'answered-review'
+                : r.markedForReview
+                  ? 'review'
+                  : r.isAnswered
+                    ? 'answered'
+                    : 'unanswered'
                 : 'unanswered';
-              return (
-                <button
-                  key={mq.id}
-                  onClick={() => goToQuestion(mq)}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded text-sm transition-colors ${
-                    isCurrent
-                      ? 'bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-400 border-l-2 border-brand-600'
-                      : status === 'answered'
-                        ? 'bg-green-50 dark:bg-green-900/10 text-green-700 dark:text-green-400'
-                        : status === 'review'
-                          ? 'bg-amber-50 dark:bg-amber-900/10 text-amber-700 dark:text-amber-400'
-                          : status === 'answered-review'
-                            ? 'bg-amber-50/50 dark:bg-amber-900/10 border-l-2 border-amber-500'
-                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                  }`}
-                  aria-label={`Question ${mq.number}, ${status}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className={`w-6 text-center font-mono ${isCurrent ? 'font-bold' : 'font-normal'}`}>
-                      {mq.number}
-                    </span>
-                    <span className="truncate">{mq.stem.length > 40 ? mq.stem.slice(0, 40) + '…' : mq.stem}</span>
-                  </div>
-                  <span
-                    className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
-                      status === 'answered' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                      : status === 'review' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
-                      : status === 'answered-review' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-300'
-                      : 'bg-slate-200 dark:bg-slate-700 text-slate-500'
-                    }`}
-                  >
-                    {status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' ')}
+            return (
+              <button
+                key={mq.id}
+                onClick={() => goToQuestion(mq)}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded text-sm transition-colors ${
+                  isCurrent
+                    ? 'bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-400 border-l-2 border-brand-600'
+                    : status === 'answered'
+                      ? 'bg-green-50 dark:bg-green-900/10 text-green-700 dark:text-green-400'
+                      : status === 'review'
+                        ? 'bg-amber-50 dark:bg-amber-900/10 text-amber-700 dark:text-amber-400'
+                        : status === 'answered-review'
+                          ? 'bg-amber-50/50 dark:bg-amber-900/10 border-l-2 border-amber-500'
+                          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+                aria-label={`Question ${mq.number}, ${status}`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className={`w-6 text-center font-mono ${isCurrent ? 'font-bold' : 'font-normal'}`}>
+                    {mq.number}
                   </span>
-                </button>
-              );
-            })}
-          </div>
-        )}
+                  <span className="truncate">{mq.stem.length > 40 ? mq.stem.slice(0, 40) + '…' : mq.stem}</span>
+                </div>
+                <span
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                    status === 'answered' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                    : status === 'review' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
+                    : status === 'answered-review' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-300'
+                    : 'bg-slate-200 dark:bg-slate-700 text-slate-500'
+                  }`}
+                >
+                  {status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' ')}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </aside>
 
-      {/* Main exam area */}
-      <div className="flex-1 flex flex-col overflow-hidden relative">
-        {/* Top bar */}
+      <div className="flex-1 flex flex-col overflow-hidden">
         <header className="flex items-center justify-between h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-6 z-10">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-medium">
@@ -364,7 +338,7 @@ export function ExamPage() {
             <button onClick={toggleVisibility} className="btn-ghost" aria-label="Toggle timer visibility">
               <Eye className="w-4 h-4" />
             </button>
-            <button onClick={() => setOpenMenu(true)} className="btn-ghost" aria-label="Question menu">
+            <button onClick={() => setOpenMenu(!openMenu)} className="btn-ghost" aria-label="Question menu">
               <LayoutList className="w-4 h-4" />
             </button>
             <button onClick={() => setSubmitConfirm(true)} className="btn-ghost" aria-label="Submit module">
@@ -373,10 +347,8 @@ export function ExamPage() {
           </div>
         </header>
 
-        {/* Question area */}
         <div className="flex-1 overflow-y-auto p-8 lg:p-12">
           <div className="max-w-4xl mx-auto">
-            {/* Question stem */}
             <div className="mb-8">
               <div className="exam-card p-6 mb-4">
                 <div className="flex items-center gap-2 mb-3">
@@ -415,7 +387,6 @@ export function ExamPage() {
               )}
             </div>
 
-            {/* Answer area */}
             <div className="exam-card p-6">
               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">Answer</h3>
 
@@ -440,7 +411,7 @@ export function ExamPage() {
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <span className="w-6 h-6 rounded-full border flex-shrink-0 flex items-center justify-center text-xs font-bold border-slate-300 dark:border-slate-600">
+                          <span className="w-6 h-6 rounded flex-shrink-0 flex items-center justify-center text-xs font-bold border-slate-300 dark:border-slate-600">
                             {opt.label}
                           </span>
                           <span className="flex-1">{opt.content}</span>
@@ -451,7 +422,6 @@ export function ExamPage() {
                   })}
                 </div>
               ) : (
-                // Student-produced response / numeric
                 <div className="flex items-start gap-3">
                   <input
                     type="text"
@@ -473,7 +443,7 @@ export function ExamPage() {
                   onClick={() => toggleEliminate(q.id, 'placeholder')}
                   disabled={!isMC}
                   className="btn-ghost text-xs opacity-50"
-                  aria-label="Eliminate option (coming soon)"
+                  aria-label="Eliminate option"
                 >
                   Eliminate
                 </button>
@@ -483,7 +453,6 @@ export function ExamPage() {
               </div>
             </div>
 
-            {/* Navigation controls */}
             <div className="mt-8 flex items-center justify-between">
               <button
                 onClick={goPrev}

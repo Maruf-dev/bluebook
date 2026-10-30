@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { AppWindow, Menu, X, Home, Calendar, Settings, HelpCircle } from 'lucide-react';
+import { AppWindow, Menu, X, Settings, HelpCircle } from 'lucide-react';
 import { ROUTES } from '../../../shared/constants';
 import { useAppStore } from '../../store/useAppStore';
 
