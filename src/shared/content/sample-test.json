@@ -1,0 +1,180 @@
+{
+  "metadata": {
+    "id": "sample-sat-001",
+    "title": "Practice Test 1",
+    "description": "A full-length original practice test covering Reading & Writing and Math sections. All questions are original and created for development purposes.",
+    "version": "1.0.0",
+    "total_questions": 8,
+    "sections": [
+      {
+        "id": "rw-1",
+        "name": "Reading and Writing",
+        "type": "reading_writing",
+        "module": 1,
+        "questionCount": 4,
+        "durationMinutes": 32,
+        "calculatorAllowed": false
+      },
+      {
+        "id": "math-1",
+        "name": "Math",
+        "type": "math",
+        "module": 1,
+        "questionCount": 4,
+        "durationMinutes": 35,
+        "calculatorAllowed": true
+      }
+    ],
+    "adaptive": false,
+    "createdAt": 1700000000000,
+    "updatedAt": 1700000000000
+  },
+  "passages": [
+    {
+      "id": "passage-1",
+      "title": "The Urban Garden Movement",
+      "content": "In recent years, urban community gardens have transformed vacant city lots into productive green spaces. These gardens provide fresh produce to neighborhoods with limited access to affordable fruits and vegetables. Researchers note that participants in community gardening programs report higher levels of neighborhood satisfaction and social connection. Critics, however, argue that such gardens occupy land that could be used for housing development, creating tension between environmental and urban planning priorities.",
+      "text": "In recent years, urban community gardens have transformed vacant city lots into productive green spaces. These gardens provide fresh produce to neighborhoods with limited access to affordable fruits and vegetables. Researchers note that participants in community gardening programs report higher levels of neighborhood satisfaction and social connection. Critics, however, argue that such gardens occupy land that could be used for housing development, creating tension between environmental and urban planning priorities."
+    }
+  ],
+  "questions": [
+    {
+      "id": "q-rw-1",
+      "sectionId": "rw-1",
+      "module": 1,
+      "number": 1,
+      "type": "multiple_choice",
+      "topic": "Command of Evidence",
+      "difficulty": "easy",
+      "points": 1,
+      "stem": "Which choice best describes the main idea of the passage?",
+      "options": [
+        { "id": "q-rw-1-a", "label": "A", "content": "Urban gardens are more effective than supermarkets at providing fresh produce.", "isCorrect": false },
+        { "id": "q-rw-1-b", "label": "B", "content": "Community gardens offer social benefits but may compete with housing needs.", "isCorrect": true },
+        { "id": "q-rw-1-c", "label": "C", "content": "City planners should convert all vacant lots into community gardens.", "isCorrect": false },
+        { "id": "q-rw-1-d", "label": "D", "content": "Researchers have proven that gardening improves physical health.", "isCorrect": false }
+      ],
+      "passageId": "passage-1",
+      "explanation": "The passage discusses both the benefits of community gardens (fresh produce, social connection) and a criticism (competition with housing development). Choice B captures both sides."
+    },
+    {
+      "id": "q-rw-2",
+      "sectionId": "rw-1",
+      "module": 1,
+      "number": 2,
+      "type": "multiple_choice",
+      "topic": "Words in Context",
+      "difficulty": "medium",
+      "points": 1,
+      "stem": "As used in the passage, the word \"occupied\" most nearly means",
+      "options": [
+        { "id": "q-rw-2-a", "label": "A", "content": "inhabited", "isCorrect": false },
+        { "id": "q-rw-2-b", "label": "B", "content": "taken up", "isCorrect": true },
+        { "id": "q-rw-2-c", "label": "C", "content": "held", "isCorrect": false },
+        { "id": "q-rw-2-d", "label": "D", "content": "busy", "isCorrect": false }
+      ],
+      "passageId": "passage-1",
+      "explanation": "In context, \"occupy land\" means to take up or use land. Choice B is correct."
+    },
+    {
+      "id": "q-rw-3",
+      "sectionId": "rw-1",
+      "module": 1,
+      "number": 3,
+      "type": "multiple_choice",
+      "topic": "Standard English Conventions",
+      "difficulty": "medium",
+      "points": 1,
+      "stem": "Which choice completes the text so that it conforms to Standard English conventions?",
+      "options": [
+        { "id": "q-rw-3-a", "label": "A", "content": "The researchers found that gardeners reported higher satisfaction than non-gardeners, which suggests a link between gardening and well-being.", "isCorrect": false },
+        { "id": "q-rw-3-b", "label": "B", "content": "The researchers found that gardeners reporting higher satisfaction than non-gardeners, which suggests a link between gardening and well-being.", "isCorrect": false },
+        { "id": "q-rw-3-c", "label": "C", "content": "The researchers found gardeners reported higher satisfaction than non-gardeners which suggests a link between gardening and well-being.", "isCorrect": false },
+        { "id": "q-rw-3-d", "label": "D", "content": "Gardeners reporting higher satisfaction than non-gardeners, the researchers found a link between gardening and well-being.", "isCorrect": false }
+      ],
+      "explanation": "Choice A uses correct subordination and punctuation."
+    },
+    {
+      "id": "q-rw-4",
+      "sectionId": "rw-1",
+      "module": 1,
+      "number": 4,
+      "type": "multiple_choice",
+      "topic": "Command of Evidence",
+      "difficulty": "hard",
+      "points": 1,
+      "stem": "Which finding, if true, would most directly support the critics' position mentioned in the passage?",
+      "options": [
+        { "id": "q-rw-4-a", "label": "A", "content": "Community gardens increase nearby property values by an average of 5%.", "isCorrect": false },
+        { "id": "q-rw-4-b", "label": "B", "content": "Vacant lots suitable for gardens could otherwise accommodate new housing units.", "isCorrect": true },
+        { "id": "q-rw-4-c", "label": "C", "content": "Garden participants consume more servings of vegetables per week.", "isCorrect": false },
+        { "id": "q-rw-4-d", "label": "D", "content": "Neighborhood satisfaction is higher near community gardens.", "isCorrect": false }
+      ],
+      "passageId": "passage-1",
+      "explanation": "The critics argue gardens compete with housing. Evidence that garden land could be used for housing supports this directly."
+    },
+    {
+      "id": "q-math-1",
+      "sectionId": "math-1",
+      "module": 1,
+      "number": 1,
+      "type": "multiple_choice",
+      "topic": "Algebra",
+      "difficulty": "easy",
+      "points": 1,
+      "stem": "If \\(2x + 5 = 17\\), what is the value of \\(x\\)?",
+      "options": [
+        { "id": "q-math-1-a", "label": "A", "content": "5", "isCorrect": false },
+        { "id": "q-math-1-b", "label": "B", "content": "6", "isCorrect": true },
+        { "id": "q-math-1-c", "label": "C", "content": "7", "isCorrect": false },
+        { "id": "q-math-1-d", "label": "D", "content": "8", "isCorrect": false }
+      ],
+      "explanation": "Subtract 5 from both sides: \\(2x = 12\\). Divide by 2: \\(x = 6\\)."
+    },
+    {
+      "id": "q-math-2",
+      "sectionId": "math-1",
+      "module": 1,
+      "number": 2,
+      "type": "student_produced_response",
+      "topic": "Problem Solving",
+      "difficulty": "medium",
+      "points": 1,
+      "stem": "A rectangular garden has a length of 12 meters and a width of 5 meters. What is the area of the garden, in square meters?",
+      "answer": "60",
+      "unit": "square meters",
+      "explanation": "Area of a rectangle = length × width = 12 × 5 = 60 square meters."
+    },
+    {
+      "id": "q-math-3",
+      "sectionId": "math-1",
+      "module": 1,
+      "number": 3,
+      "type": "multiple_choice",
+      "topic": "Geometry",
+      "difficulty": "medium",
+      "points": 1,
+      "stem": "A circle has a radius of 4 cm. What is the area of the circle, in terms of \\(\\pi\\)?",
+      "options": [
+        { "id": "q-math-3-a", "label": "A", "content": "8\pi", "isCorrect": false },
+        { "id": "q-math-3-b", "label": "B", "content": "16\pi", "isCorrect": true },
+        { "id": "q-math-3-c", "label": "C", "content": "32\pi", "isCorrect": false },
+        { "id": "q-math-3-d", "label": "D", "content": "64\pi", "isCorrect": false }
+      ],
+      "explanation": "Area of a circle = \\(\\pi r^2 = \\pi(4^2) = 16\pi\\)."
+    },
+    {
+      "id": "q-math-4",
+      "sectionId": "math-1",
+      "module": 1,
+      "number": 4,
+      "type": "student_produced_response",
+      "topic": "Algebra",
+      "difficulty": "hard",
+      "points": 1,
+      "stem": "For what value of \\(x\\) is \\(3x - 7 = 2x + 5\\)?",
+      "answer": "12",
+      "explanation": "Subtract 2x from both sides: \\(x - 7 = 5\\). Add 7 to both sides: \\(x = 12\\)."
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+name: Build ExamDesk Windows x64
+
+on:
+  workflow_dispatch:
+    name: Manual Windows Build
+    description: Trigger a Windows x64 build of ExamDesk
+  push:
+    branches: [main]
+    name: Push Build
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-windows:
+    name: Build ExamDesk for Windows x64
+    runs-on: windows-latest
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: .
+        shell: powershell
+
+      - name: Verify Node.js version
+        run: node --version && npm --version
+
+      - name: Install electron-builder globally (for build tools)
+        run: npm install -g electron-builder@^24.0.0
+        shell: powershell
+
+      - name: Build Renderer Process
+        run: npm run build
+        working-directory: .
+        shell: powershell
+        env:
+          CI: true
+
+      - name: Build Main Process
+        run: npm run build:main
+        working-directory: .
+        shell: powershell
+        env:
+          CI: true
+
+      - name: Verify TypeScript Main Process
+        run: npx tsc --noEmit
+        working-directory: .
+        shell: powershell
+
+      - name: Install better-sqlite3 Windows x64 Dependencies
+        run: |
+          npm install --ignore-scripts
+          # Install python for native module rebuild
+          winginstall python3 -y 2>$null || (iwr https://www.python.org/ftp/python/3.11.0/python-3.11.0-amd64.exe -UseBasicParsing).SaveAs("C:\Python311\python.exe") 2>$null
+        shell: powershell
+
+      - name: Package Windows x64 Installer
+        run: npm run dist:win
+        working-directory: .
+        shell: powershell
+        env:
+          # electron-builder configuration
+          ELECTRON_BUILDER_CACHE_DIR: .cache
+          # Ensure we build for x64 specifically
+          ELECTRON_ARCH: x64
+
+      - name: Upload Windows Installer Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ExamDesk-Windows-x64
+          path: |
+            release/ExamDesk-Setup-x64.exe
+            out/**/*.exe
+          retention-days: 30
+
+      - name: Publish Build Summary
+        run: |
+          Write-Host "=== ExamDesk Windows Build Complete ==="
+          Write-Host "Artifact: ExamDesk-Windows-x64"
+          Write-Host "Installer path: release/ExamDesk-Setup-x64.exe"
+          if (Test-Path "release/ExamDesk-Setup-x64.exe") {
+            Write-Host "Installer: FOUND - $(Get-Item 'release/ExamDesk-Setup-x64.exe').Length bytes"
+          } else {
+            Write-Host "Installer: NOT FOUND - checking output directory..."
+            Get-ChildItem -Recurse out/ 2>$null | Select-Object -First 5
+          }
+        shell: powershell
