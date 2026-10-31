@@ -197,12 +197,12 @@ export function ExamPage() {
                         ? 'bg-amber-50 dark:bg-amber-900/10 text-amber-700 dark:text-amber-400'
                         : status === 'answered-review'
                           ? 'bg-amber-50/50 dark:bg-amber-900/10 border-l-2 border-amber-500'
-                          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}
-                }
-                aria-label="Question " + mq.number + ", " + status
+                          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+                aria-label={`Question ${mq.number}, ${status}`}
               >
                 <div className="flex items-center gap-3">
-                  <span className={"w-6 text-center font-mono " + (isCurrent ? 'font-bold' : 'font-normal')}>
+                  <span className={`w-6 text-center font-mono ${isCurrent ? 'font-bold' : 'font-normal'}`}>
                     {mq.number}
                   </span>
                   <span className="truncate">{mq.stem.length > 40 ? mq.stem.slice(0, 40) + '…' : mq.stem}</span>
