@@ -5,26 +5,16 @@ export interface UserPreferences {
   fontSize: 'small' | 'medium' | 'large';
   timerVisible: boolean;
   soundEnabled: boolean;
-  highContrast: boolean;
   keyboardShortcuts: boolean;
 }
 
-export interface TestMetadata {
-  id: string;
-  title: string;
-  description: string;
-  version: string;
-  totalQuestions: number;
-  sections: SectionConfig[];
-  adaptive: boolean;
-  createdAt: number;
-  updatedAt: number;
-}
+export type SectionType = 'reading_writing' | 'math';
+export type QuestionType = 'multiple_choice' | 'student_produced_response' | 'reading_passage';
 
 export interface SectionConfig {
   id: string;
   name: string;
-  type: 'reading_writing' | 'math';
+  type: SectionType;
   module: number;
   questionCount: number;
   durationMinutes: number;
@@ -32,18 +22,32 @@ export interface SectionConfig {
   adaptiveRouting?: boolean;
 }
 
+export interface TestMetadata {
+  id: string;
+  title: string;
+  description: string;
+  version: string;
+  total_questions?: number;
+  /** Older test files keep the section list inside metadata. */
+  sections?: SectionConfig[];
+  adaptive?: boolean;
+  createdAt?: number;
+  updatedAt?: number;
+}
+
 export interface QuestionBase {
   id: string;
   sectionId: string;
   module: number;
   number: number;
-  type: 'multiple_choice' | 'student_produced_response' | 'reading_passage';
+  type: QuestionType;
   topic?: string;
   difficulty?: 'easy' | 'medium' | 'hard';
   points: number;
   stem: string;
   image?: string;
   explanation?: string;
+  passageId?: string;
 }
 
 export interface MultipleChoiceOption {
@@ -60,11 +64,9 @@ export interface MultipleChoiceQuestion extends QuestionBase {
 
 export interface StudentProducedResponseQuestion extends QuestionBase {
   type: 'student_produced_response';
+  /** Correct answer. Several accepted forms can be separated with "|", e.g. "1/2|0.5". */
   answer: string;
   unit?: string;
-  allowNegative?: boolean;
-  allowDecimal?: boolean;
-  maxDecimals?: number;
 }
 
 export interface ReadingPassageQuestion extends QuestionBase {
@@ -77,7 +79,7 @@ export interface ReadingPassage {
   id: string;
   title: string;
   content: string;
-  text: string;
+  text?: string;
 }
 
 export type Question =
@@ -87,26 +89,9 @@ export type Question =
 
 export interface TestContent {
   metadata: TestMetadata;
-  sections: SectionConfig[];
+  sections?: SectionConfig[];
   passages?: ReadingPassage[];
   questions: Question[];
-}
-
-export interface AnswerResponse {
-  questionId: string;
-  sectionId: string;
-  module: number;
-  questionNumber: number;
-  type: 'multiple_choice' | 'student_produced_response' | 'reading_passage';
-  selectedOptionId?: string | null;
-  numericAnswer?: string | null;
-  isAnswered: boolean;
-  markedForReview: boolean;
-  eliminatedOptionIds: string[];
-  note?: string | null;
-  highlights: HighlightRange[];
-  timeSpentSeconds: number;
-  lastUpdated: number;
 }
 
 export interface HighlightRange {
@@ -117,19 +102,21 @@ export interface HighlightRange {
   style: 'yellow' | 'blue' | 'green';
 }
 
-export interface ModuleAttempt {
-  id: string;
-  testId: string;
+export interface AnswerResponse {
+  questionId: string;
   sectionId: string;
   module: number;
-  startedAt: number;
-  completedAt?: number;
-  deadlineAt: number;
-  durationMinutes: number;
-  status: 'in_progress' | 'completed' | 'locked' | 'expired';
-  timeRemainingSeconds: number;
-  responses: Record<string, AnswerResponse>;
-  scores?: ModuleScore;
+  questionNumber: number;
+  type: QuestionType;
+  selectedOptionId: string | null;
+  numericAnswer: string | null;
+  isAnswered: boolean;
+  markedForReview: boolean;
+  eliminatedOptionIds: string[];
+  note: string | null;
+  highlights: HighlightRange[];
+  timeSpentSeconds: number;
+  lastUpdated: number;
 }
 
 export interface ModuleScore {
@@ -137,23 +124,29 @@ export interface ModuleScore {
   incorrect: number;
   unanswered: number;
   total: number;
-  rawScore: number;
-  scaledScore?: number;
 }
 
-export interface TestAttempt {
+/** `pending` = not started yet; startedAt/deadlineAt are 0 until the module begins. */
+export type ModuleStatus = 'pending' | 'in_progress' | 'completed' | 'expired';
+
+export interface ModuleAttempt {
   id: string;
-  testId: string;
+  sectionId: string;
+  module: number;
   startedAt: number;
-  completedAt?: number;
-  status: 'in_progress' | 'completed' | 'abandoned';
-  modules: Record<string, ModuleAttempt>;
-  totalScore?: TestScore;
+  completedAt: number | null;
+  deadlineAt: number;
+  durationMinutes: number;
+  status: ModuleStatus;
+  timeRemainingSeconds: number;
+  responses: Record<string, AnswerResponse>;
+  scores: ModuleScore | null;
 }
 
 export interface TestScore {
-  readingWritingScore: number;
-  mathScore: number;
+  /** null when the test has no section of that type */
+  readingWritingScore: number | null;
+  mathScore: number | null;
   totalScore: number;
   correct: number;
   incorrect: number;
@@ -162,14 +155,38 @@ export interface TestScore {
   timeSpentSeconds: number;
 }
 
-export interface SessionState {
-  attemptId: string | null;
-  testId: string | null;
-  currentSectionId: string | null;
-  currentModule: number | null;
-  currentQuestionNumber: number | null;
-  isLocked: boolean;
+export type AttemptStatus = 'in_progress' | 'completed';
+
+export interface TestAttempt {
+  id: string;
+  testId: string;
+  startedAt: number;
+  completedAt: number | null;
+  status: AttemptStatus;
+  modules: Record<string, ModuleAttempt>;
+  totalScore: TestScore | null;
 }
+
+export interface AttemptSummary {
+  id: string;
+  testId: string;
+  testTitle: string;
+  startedAt: number;
+  completedAt: number | null;
+  status: AttemptStatus;
+  totalScore: TestScore | null;
+}
+
+export interface TestSummary {
+  id: string;
+  title: string;
+  description: string;
+  version: string;
+  totalQuestions: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export type IPCResponse<T = unknown> = {
   success: boolean;
   data?: T;

@@ -1,115 +1,72 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate, useLink } from 'react-router-dom';
-import { Play, ArrowRight, Clock, FileText, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { AlertTriangle, ArrowLeft, FileText, Play } from 'lucide-react';
+import type { TestContent } from '@shared/types';
+import { getModuleQuestions, getSections } from '@shared/exam';
 import { ROUTES } from '../../shared/constants';
-import { useTimerStore } from '../store/useTimerStore';
-
-interface TestContent {
-  metadata: any;
-  sections: any[];
-  questions: any[];
-}
+import { errorMessage, invoke } from '../lib/api';
+import { startAttempt } from '../lib/session';
+import { ErrorCard, InlineError, Loading } from '../components/StatusMessage';
 
 export function TestSetupPage() {
   const { testId } = useParams<{ testId: string }>();
   const navigate = useNavigate();
-  const { startTimer } = useTimerStore();
   const [test, setTest] = useState<TestContent | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [startError, setStartError] = useState<string | null>(null);
+  const [starting, setStarting] = useState(false);
 
   useEffect(() => {
     if (!testId) return;
     (async () => {
       try {
-        const res = await window.examDeskAPI.invoke<{ success: boolean; data?: TestContent; error?: string }>('db:get_test', { testId });
-        if (res.success && res.data) {
-          setTest(res.data);
-        } else {
-          setError(res.error || 'Failed to load test');
-        }
+        setTest(await invoke<TestContent>('db:get_test', { testId }));
       } catch (e) {
-        setError('Unexpected error loading test');
+        setLoadError(errorMessage(e));
       } finally {
         setLoading(false);
       }
     })();
   }, [testId]);
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64">
-        <RefreshCw className="w-6 h-6 animate-spin mb-2 text-slate-400" />
-        <p className="text-slate-500 dark:text-slate-400">Loading test details…</p>
-      </div>
-    );
-  }
+  if (loading) return <Loading label="Loading test details…" />;
 
-  if (error || !test) {
+  if (loadError || !test || !testId) {
     return (
-      <div className="exam-card p-8 text-center">
-        <AlertTriangle className="w-8 h-8 mx-auto mb-3 text-amber-500" />
-        <h2 className="font-semibold text-slate-900 dark:text-slate-100">{error || 'Test not found'}</h2>
-        <Link to={ROUTES.PRACTICE} className="btn-secondary mt-4 inline-block">
-          <ArrowRight className="w-4 h-4 mr-2" /> Back to Library
+      <ErrorCard message={loadError || 'Test not found'}>
+        <Link to={ROUTES.PRACTICE} className="btn-secondary">
+          <ArrowLeft className="w-4 h-4 mr-2" /> Back to Library
         </Link>
-      </div>
+      </ErrorCard>
     );
   }
 
-  const { metadata, sections } = test;
+  const { metadata } = test;
+  const sections = getSections(test);
   const totalTime = sections.reduce((sum, s) => sum + s.durationMinutes, 0);
 
-  const handleStartTest = async () => {
-    if (first) {
-      const now = Date.now();
-      const deadline = now + first.durationMinutes * 60 * 1000;
-      startTimer(first.durationMinutes, deadline);
-    }
-
+  const handleStart = async () => {
+    setStarting(true);
+    setStartError(null);
     try {
-      const attemptId = `attempt_${Date.now()}`;
-      await window.examDeskAPI.invoke('db:save_attempt', {
-        attempt: {
-          id: attemptId,
-          testId: metadata.id,
-          startedAt: Date.now(),
-          status: 'in_progress',
-          modules: sections.reduce((acc: any, s) => {
-            acc[`${s.id}-m${s.module}`] = {
-              id: `${s.id}-m${s.module}`,
-              sectionId: s.id,
-              module: s.module,
-              startedAt: Date.now(),
-              deadlineAt: Date.now() + s.durationMinutes * 60 * 1000,
-              durationMinutes: s.durationMinutes,
-              status: 'in_progress',
-              timeRemainingSeconds: s.durationMinutes * 60,
-              responses: {},
-              scores: null,
-            };
-            return acc;
-          }, {}),
-          totalScore: null,
-        },
-      });
+      await startAttempt(testId);
       navigate(ROUTES.EXAM);
     } catch (e) {
-      setError('Failed to initialize test session');
+      setStartError(`Failed to start the test: ${errorMessage(e)}`);
+      setStarting(false);
     }
   };
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <Link to={ROUTES.PRACTICE} className="btn-secondary">
-          <ArrowRight className="w-4 h-4 mr-2" /> Back to Library
-        </Link>
-      </div>
+      <Link to={ROUTES.PRACTICE} className="btn-secondary">
+        <ArrowLeft className="w-4 h-4 mr-2" /> Back to Library
+      </Link>
 
       <div className="exam-card p-8">
         <div className="flex items-start gap-4 mb-6">
-          <div className="w-12 h-12 rounded-xl bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center text-brand-600 dark:text-brand-400 text-xl">
+          <div className="w-12 h-12 rounded-xl bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center text-brand-600 dark:text-brand-400">
             <FileText />
           </div>
           <div>
@@ -119,33 +76,28 @@ export function TestSetupPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-lg">
-            <p className="text-xs text-slate-500">Total Questions</p>
-            <p className="text-xl font-semibold">{metadata.total_questions}</p>
-          </div>
-          <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-lg">
-            <p className="text-xs text-slate-500">Sections</p>
-            <p className="text-xl font-semibold">{sections.length}</p>
-          </div>
-          <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-lg">
-            <p className="text-xs text-slate-500">Total Time</p>
-            <p className="text-xl font-semibold">{totalTime} min</p>
-          </div>
+          <Stat label="Total Questions" value={test.questions.length} />
+          <Stat label="Modules" value={sections.length} />
+          <Stat label="Total Time" value={`${totalTime} min`} />
         </div>
 
         <div className="mb-6">
-          <h3 className="text-sm font-semibold mb-3">Section Details</h3>
+          <h3 className="text-sm font-semibold mb-3">Modules</h3>
           <div className="space-y-2">
             {sections.map((s) => (
-              <div key={`${s.id}-m${s.module}`} className="flex items-center justify-between p-3 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50">
+              <div
+                key={`${s.id}-m${s.module}`}
+                className="flex items-center justify-between p-3 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50"
+              >
                 <div>
                   <div className="text-sm font-medium">{s.name}</div>
                   <div className="text-xs text-slate-500">
-                    Module {s.module} · {s.type.replace('_', ' ')}
+                    Module {s.module}
+                    {s.calculatorAllowed ? ' · calculator allowed' : ''}
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm font-medium">{s.questionCount} questions</div>
+                  <div className="text-sm font-medium">{getModuleQuestions(test, s.id, s.module).length} questions</div>
                   <div className="text-xs text-slate-500">{s.durationMinutes} min</div>
                 </div>
               </div>
@@ -159,25 +111,31 @@ export function TestSetupPage() {
             <div>
               <h4 className="font-semibold text-amber-800 dark:text-amber-300">Timed session</h4>
               <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
-                Once started, each module timer counts down independently. The timer does not pause when you switch questions or open tools.
+                Modules are taken in order and each has its own timer. The timer keeps running if you close the app;
+                when it runs out, the module is submitted automatically.
               </p>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-6 border-t border-slate-200 dark:border-slate-800">
-          <p className="text-sm text-slate-500">
-            Your progress is saved automatically. You can resume an unfinished session later.
-          </p>
-          <button
-            onClick={handleStartTest}
-            className="btn-primary flex items-center gap-2"
-            disabled={loading}
-          >
-            <Play className="w-4 h-4" /> Start Test
+        <InlineError message={startError} />
+
+        <div className="flex items-center justify-between pt-6 mt-6 border-t border-slate-200 dark:border-slate-800">
+          <p className="text-sm text-slate-500">Your answers are saved automatically.</p>
+          <button onClick={handleStart} className="btn-primary flex items-center gap-2" disabled={starting}>
+            <Play className="w-4 h-4" /> {starting ? 'Starting…' : 'Start Test'}
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-lg">
+      <p className="text-xs text-slate-500">{label}</p>
+      <p className="text-xl font-semibold">{value}</p>
     </div>
   );
 }

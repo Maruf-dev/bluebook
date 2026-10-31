@@ -1,17 +1,18 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
-import App from './App';
+// HashRouter: the packaged app is loaded from file://, where BrowserRouter paths do not resolve.
+import { HashRouter } from 'react-router-dom';
+import 'katex/dist/katex.min.css';
 import './index.css';
-import { useAppStore } from '../store/useAppStore';
+import App from './App';
+import { applyTheme, useAppStore } from '../store/useAppStore';
+
+applyTheme(useAppStore.getState().theme);
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BrowserRouter>
+    <HashRouter>
       <App />
-    </BrowserRouter>
+    </HashRouter>
   </React.StrictMode>
 );
-
-// Initialize theme on load
-useAppStore.getState().setTheme(useAppStore.getState().theme);

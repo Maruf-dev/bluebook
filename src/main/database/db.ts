@@ -2,15 +2,62 @@ import Database from 'better-sqlite3';
 import path from 'node:path';
 import { app } from 'electron';
 import { MIGRATIONS, getLatestMigrationId } from './migrations';
-import sampleTest from '../../shared/content/sample-test.json';
+import sampleTestJson from '../../shared/content/sample-test.json';
+import type { TestContent } from '../../shared/types';
 
 export type DB = Database.Database;
+
+const sampleTest = sampleTestJson as unknown as TestContent;
 
 let dbInstance: DB | null = null;
 
 export function getDbPath(): string {
-  const userData = app.getPath('userData');
-  return path.join(userData, 'examdesk.db');
+  return path.join(app.getPath('userData'), 'examdesk.db');
+}
+
+function runMigrations(db: DB) {
+  // The version is stored in `settings`, so that table must exist before we can read it.
+  db.exec('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
+  const row = db.prepare("SELECT value FROM settings WHERE key = 'db_version'").get() as
+    | { value: string }
+    | undefined;
+  const currentVersion = row ? parseInt(row.value, 10) || 0 : 0;
+
+  const pending = MIGRATIONS.filter((m) => m.id > currentVersion);
+  if (pending.length === 0) return;
+
+  db.transaction(() => {
+    for (const migration of pending) migration.up(db);
+    db.prepare(
+      "INSERT INTO settings (key, value) VALUES ('db_version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value"
+    ).run(String(getLatestMigrationId()));
+  })();
+}
+
+/** Keeps the bundled sample test in sync with the version shipped in the app. */
+function upsertSampleTest(db: DB) {
+  const now = Date.now();
+  db.prepare(
+    `INSERT INTO tests (id, title, description, version, total_questions, content, created_at, updated_at)
+     VALUES (@id, @title, @description, @version, @total_questions, @content, @created_at, @updated_at)
+     ON CONFLICT(id) DO UPDATE SET
+       title = excluded.title,
+       description = excluded.description,
+       version = excluded.version,
+       total_questions = excluded.total_questions,
+       content = excluded.content,
+       updated_at = excluded.updated_at
+     WHERE tests.version <> excluded.version`
+  ).run({
+    id: sampleTest.metadata.id,
+    title: sampleTest.metadata.title,
+    description: sampleTest.metadata.description,
+    version: sampleTest.metadata.version,
+    total_questions: sampleTest.questions.length,
+    content: JSON.stringify(sampleTest),
+    created_at: sampleTest.metadata.createdAt ?? now,
+    updated_at: now,
+  });
 }
 
 export function initDatabase(): DB {
@@ -20,41 +67,8 @@ export function initDatabase(): DB {
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
 
-  const row = db
-    .prepare("SELECT value FROM settings WHERE key = 'db_version'")
-    .get() as { value: string } | undefined;
-  const currentVersion = row ? parseInt(row.value, 10) : 0;
-
-  for (const migration of MIGRATIONS) {
-    if (migration.id > currentVersion) {
-      migration.up(db);
-    }
-  }
-
-  db.prepare(
-    "INSERT INTO settings (key, value) VALUES ('db_version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value"
-  ).run(String(getLatestMigrationId()));
-
-  // Seed sample test if database is empty (first run)
-  const testCount = db.prepare('SELECT COUNT(*) as c FROM tests').get() as { c: number };
-  if (testCount.c === 0) {
-    const tx = db.transaction(() => {
-      db.prepare(
-        `INSERT INTO tests (id, title, description, version, total_questions, content, created_at, updated_at)
-         VALUES (@id, @title, @description, @version, @total_questions, @content, @created_at, @updated_at)`
-      ).run({
-        id: sampleTest.metadata.id,
-        title: sampleTest.metadata.title,
-        description: sampleTest.metadata.description,
-        version: sampleTest.metadata.version,
-        total_questions: sampleTest.metadata.total_questions,
-        content: JSON.stringify(sampleTest),
-        created_at: sampleTest.metadata.createdAt,
-        updated_at: sampleTest.metadata.updatedAt,
-      });
-    });
-    tx();
-  }
+  runMigrations(db);
+  upsertSampleTest(db);
 
   dbInstance = db;
   return db;

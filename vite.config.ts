@@ -4,6 +4,8 @@ import path from 'node:path';
 
 export default defineConfig({
   plugins: [react()],
+  // Relative asset URLs so the build works when Electron loads it from file://
+  base: './',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src/renderer'),

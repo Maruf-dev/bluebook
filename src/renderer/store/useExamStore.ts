@@ -1,150 +1,97 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-
-type AnswerResponse = {
-  questionId: string;
-  sectionId: string;
-  module: number;
-  questionNumber: number;
-  type: string;
-  selectedOptionId: string | null;
-  numericAnswer: string | null;
-  isAnswered: boolean;
-  markedForReview: boolean;
-  eliminatedOptionIds: string[];
-  highlights: any[];
-  timeSpentSeconds: number;
-  lastUpdated: number;
-};
-
-type ModuleAttempt = {
-  id: string;
-  testId: string;
-  sectionId: string;
-  module: number;
-  startedAt: number;
-  completedAt: number | null;
-  deadlineAt: number;
-  durationMinutes: number;
-  status: string;
-  timeRemainingSeconds: number;
-  responses: Record<string, AnswerResponse>;
-  scores: any;
-};
+import type { AnswerResponse, ModuleAttempt, Question, TestAttempt, TestContent } from '@shared/types';
+import { collectResponses } from '@shared/exam';
 
 type ExamStore = {
-  content: any;
-  metadata: any;
-  sections: any[];
-  currentSectionId: string | null;
-  currentModule: number | null;
-  currentQuestionNumber: number | null;
+  attempt: TestAttempt | null;
+  content: TestContent | null;
+  /** id of the module currently being taken (key of attempt.modules) */
+  currentModuleId: string | null;
+  currentIndex: number;
+  /** All responses of the attempt, keyed by question id */
   responses: Record<string, AnswerResponse>;
-  moduleAttempts: Record<string, ModuleAttempt>;
-  isLocked: boolean;
-  setContent: (content: any) => void;
-  setCurrentQuestion: (sectionId: string, module: number, questionNumber: number) => void;
-  setResponse: (response: AnswerResponse) => void;
-  toggleReview: (questionId: string) => void;
-  toggleEliminate: (questionId: string, optionId: string) => void;
-  setNote: (questionId: string, note: string | null) => void;
-  setHighlight: (questionId: string, ranges: any[]) => void;
-  completeModule: (sectionId: string, module: number) => void;
-  resetExam: () => void;
+
+  loadSession: (attempt: TestAttempt, content: TestContent, currentModuleId: string | null) => void;
+  setCurrentIndex: (index: number) => void;
+  setCurrentModule: (moduleId: string | null) => void;
+  updateModule: (module: ModuleAttempt) => void;
+  setAttempt: (attempt: TestAttempt) => void;
+  /** Applies a patch to a question's response (creating it if needed) and returns the new response. */
+  updateResponse: (question: Question, patch: Partial<AnswerResponse>) => AnswerResponse;
+  reset: () => void;
 };
 
-export const useExamStore = create<ExamStore>()(
-  persist(
-    (set) => ({
-      content: null,
-      metadata: null,
-      sections: [],
-      currentSectionId: null,
-      currentModule: null,
-      currentQuestionNumber: null,
-      responses: {},
-      moduleAttempts: {},
-      isLocked: false,
+function emptyResponse(q: Question): AnswerResponse {
+  return {
+    questionId: q.id,
+    sectionId: q.sectionId,
+    module: q.module,
+    questionNumber: q.number,
+    type: q.type,
+    selectedOptionId: null,
+    numericAnswer: null,
+    isAnswered: false,
+    markedForReview: false,
+    eliminatedOptionIds: [],
+    note: null,
+    highlights: [],
+    timeSpentSeconds: 0,
+    lastUpdated: Date.now(),
+  };
+}
 
-      setContent: (content) => set({ content, sections: content?.sections ?? [] }),
+const initialState = {
+  attempt: null,
+  content: null,
+  currentModuleId: null,
+  currentIndex: 0,
+  responses: {},
+};
 
-      setCurrentQuestion: (sectionId, module, questionNumber) =>
-        set({ currentSectionId: sectionId, currentModule: module, currentQuestionNumber: questionNumber }),
+export const useExamStore = create<ExamStore>()((set, get) => ({
+  ...initialState,
 
-      setResponse: (response) => set({ responses: { ...state.responses, [response.questionId]: response } }),
+  loadSession: (attempt, content, currentModuleId) =>
+    set({ attempt, content, currentModuleId, currentIndex: 0, responses: collectResponses(attempt) }),
 
-      toggleReview: (questionId) =>
-        set((state) => {
-          const responses = { ...state.responses };
-          const existing = responses[questionId];
-          if (existing) {
-            responses[questionId] = { ...existing, markedForReview: !existing.markedForReview };
-          } else {
-            responses[questionId] = { ...existing, markedForReview: true };
-          }
-          return { responses };
-        }),
+  setCurrentIndex: (currentIndex) => set({ currentIndex }),
 
-      toggleEliminate: (questionId, optionId) =>
-        set((state) => {
-          const responses = { ...state.responses };
-          const existing = responses[questionId];
-          if (!existing) return state;
-          const eliminated = [...existing.eliminatedOptionIds];
-          const idx = eliminated.indexOf(optionId);
-          if (idx >= 0) eliminated.splice(idx, 1);
-          else eliminated.push(optionId);
-          responses[questionId] = { ...existing, eliminatedOptionIds: eliminated };
-          return { responses };
-        }),
+  setCurrentModule: (currentModuleId) => set({ currentModuleId, currentIndex: 0 }),
 
-      setNote: (questionId, note) =>
-        set((state) => {
-          const responses = { ...state.responses };
-          const existing = responses[questionId];
-          if (existing) {
-            responses[questionId] = { ...existing, note };
-          }
-          return { responses };
-        }),
+  updateModule: (module) =>
+    set((state) =>
+      state.attempt
+        ? { attempt: { ...state.attempt, modules: { ...state.attempt.modules, [module.id]: module } } }
+        : {}
+    ),
 
-      setHighlight: (questionId, ranges) =>
-        set((state) => {
-          const responses = { ...state.responses };
-          const existing = responses[questionId];
-          if (existing) {
-            responses[questionId] = { ...existing, highlights: ranges };
-          }
-          return { responses };
-        }),
+  setAttempt: (attempt) => set({ attempt }),
 
-      completeModule: (sectionId, module) =>
-        set((state) => {
-          const attempts = { ...state.moduleAttempts };
-          const key = `${sectionId}-m${module}`;
-          const attempt = attempts[key];
-          if (attempt) {
-            attempts[key] = { ...attempt, status: 'completed', completedAt: Date.now() };
-          }
-          return { moduleAttempts: attempts };
-        }),
+  updateResponse: (question, patch) => {
+    const { responses, attempt, currentModuleId } = get();
+    const merged: AnswerResponse = {
+      ...(responses[question.id] ?? emptyResponse(question)),
+      ...patch,
+      lastUpdated: Date.now(),
+    };
+    merged.isAnswered =
+      merged.selectedOptionId != null || (merged.numericAnswer != null && merged.numericAnswer.trim() !== '');
 
-      resetExam: () =>
-        set({
-          content: null,
-          metadata: null,
-          sections: [],
-          currentSectionId: null,
-          currentModule: null,
-          currentQuestionNumber: null,
-          responses: {},
-          moduleAttempts: {},
-          isLocked: false,
-        }),
-    }),
-    {
-      name: 'examdesk-exam-store',
-      storage: createJSONStorage(() => localStorage),
+    const nextResponses = { ...responses, [question.id]: merged };
+    let nextAttempt = attempt;
+    const mod = currentModuleId ? attempt?.modules[currentModuleId] : undefined;
+    if (attempt && mod) {
+      nextAttempt = {
+        ...attempt,
+        modules: {
+          ...attempt.modules,
+          [mod.id]: { ...mod, responses: { ...mod.responses, [question.id]: merged } },
+        },
+      };
     }
-  )
-);
+    set({ responses: nextResponses, attempt: nextAttempt });
+    return merged;
+  },
+
+  reset: () => set(initialState),
+}));

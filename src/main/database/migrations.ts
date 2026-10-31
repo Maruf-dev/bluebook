@@ -12,8 +12,6 @@ export const MIGRATIONS: Migration[] = [
     name: 'initial_schema',
     up: (db: Database.Database) => {
       db.exec(`
-        PRAGMA journal_mode = WAL;
-
         CREATE TABLE IF NOT EXISTS user_preferences (
           key TEXT PRIMARY KEY,
           value TEXT NOT NULL,

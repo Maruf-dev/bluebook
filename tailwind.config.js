@@ -1,5 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  // The theme is toggled with <html data-theme="dark">, not the OS setting.
+  darkMode: ['selector', '[data-theme="dark"]'],
   content: [
     "./index.html",
     "./src/renderer/**/*.{js,ts,jsx,tsx}",
