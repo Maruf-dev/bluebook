@@ -202,7 +202,7 @@ export function ExamPage() {
                 aria-label="Question " + mq.number + ", " + status
               >
                 <div className="flex items-center gap-3">
-                  <span className={`w-6 text-center font-mono ${isCurrent ? 'font-bold' : 'font-normal'}`}>
+                  <span className={"w-6 text-center font-mono " + (isCurrent ? 'font-bold' : 'font-normal')}>
                     {mq.number}
                   </span>
                   <span className="truncate">{mq.stem.length > 40 ? mq.stem.slice(0, 40) + '…' : mq.stem}</span>
